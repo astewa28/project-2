@@ -51,7 +51,7 @@ final_merged <- readRDS("final_table.rds")
 
 
 
-## Row - Research Question {height="10%"}
+## Row - Research Question {height="11%"}
 
 ::: card
 **Research Question**
@@ -59,10 +59,12 @@ final_merged <- readRDS("final_table.rds")
 How are demographic, economic, and geographic characteristics of countries associated with differences in plastic collected during cleanup audits?
 :::
 
+## Row {height="89%"}
 
-## Row - Tables
+### Column {width="50%"}
 
-### Column - Research Question 2 Tables
+#### Row {height="50%"}
+
 
 ::: panel-tabset
 ## Environmental Metrics
@@ -175,7 +177,7 @@ final_merged |>
 :::
 
 
-### Column - Plots
+#### Row {height="50%"}
 
 ::: panel-tabset
 ## GDP per Capita Groups
@@ -284,7 +286,7 @@ final_merged |>
 ```
 :::
 
-### Column - Model {width="25%"}
+### Column - Model {width="50%"}
 
 
 ```{r}
