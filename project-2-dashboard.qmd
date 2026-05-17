@@ -61,8 +61,14 @@ final_merged <- readRDS("final_table.rds")
 
 state_gdp <- read_csv("nigeria_state_gdp.csv")
 
+census <- read_csv("nigera-2020.csv")
+
 state_gdp_clean <- state_gdp |>
   mutate(State = str_remove(State, " State"))
+
+census_clean <- census |> 
+  mutate(State = str_remove(State, " State"),
+         `Population 2020 projected` = `Population 2020 projected`/1000000)
 
 
 my_shapefile <- st_read("nga_admin1.geojson", quiet = TRUE)
@@ -91,7 +97,12 @@ plot_this2 <- my_shapefile |>
   mutate(gdp_bil_usd = `GDP (bil. US$)`)
 
 
+plot_this3 <- my_shapefile |> 
+  left_join(census_clean, by = join_by(adm1_name == State))
+
 centroids <- st_centroid(plot_this)
+
+centroids3 <- st_centroid(plot_this3)
 
 
 
@@ -224,14 +235,14 @@ final_merged |>
                        fill = income_group)) +
   geom_density_ridges(alpha = 0.7) +
   scale_fill_manual(values = c(
-  "High Income"   = "#58b4f5",
-  "Middle Income" = "#a8d8ea",
-  "Low Income"    = "#56e8c8")) +
+  "High Income"   = "#E69F00",
+  "Middle Income" = "#009E73",
+  "Low Income"    = "#0072B2")) +
   labs(
     title = "Plastic Waste Type Distribution of Countries by GDP per Capita",
-    subtitle = "Divided into <span style='color: #58b4f5;'>High Income</span>, 
-      <span style='color: #a8d8ea;'>Middle Income</span>,
-    and <span style='color: #56e8c8;'>Low Income</span>",
+    subtitle = "Divided into <span style='color: #E69F00;'>High Income</span>, 
+      <span style='color: #009E73;'>Middle Income</span>,
+    and <span style='color: #0072B2;'>Low Income</span>",
     x = "Plastic Waste Units Audited",
     y = "",
     alt = "Density ridge plot showing the density of plastic waste audited
@@ -246,7 +257,7 @@ final_merged |>
 
 
 ## Waste Producers
-::: {.card title="Economic Drivers = Plastic Waste Generators???"}
+::: {.card title="Plastic Waste Generators"}
 The presence of large corporations withing a country may also affect the plastic produced. This talbe explores which companies produce the most plastic waste that was audited within a country.
 
 ```{r}
@@ -314,14 +325,14 @@ fig <- fig |>
                                  active = 0,
                                  buttons = buttons,
                                  x = 0,
-                                 y = 1.5,
+                                 y = 1.45,
                                  xanchor = "left",
                                  yanchor = "top",
                                  pad = list(r = 10, t = 10))),
          title = list(text = paste("Top 7 Plastic Waste Producing Companies in",
                                    countries[1]),
-                      y = .95),
-         yaxis = list(title = "Parent Company"),
+                      y = .93),
+         yaxis = list(title = ""),
          xaxis = list(title = "Total Plastic Audited", autorange = TRUE),
          showlegend = FALSE)
 
@@ -387,6 +398,7 @@ final_merged |>
 ### Column - Model {width="40%"}
 
 
+::: {.card title="Model"}
 ```{r}
 fit_final_maybe <- lmer(
   log_total_plastic ~
@@ -432,8 +444,12 @@ anova(fit_final_maybe) |>
   )
 ```
 
+This mixed effects model examines how population, population density, GDP, year, and geographic region are associated with the amount of plastic collected in cleanup audits. The response variable is the logged total number of plastic items collected for each country/year.
 
+Population, population density, and GDP are also log transformed so the model is more stable rather than the raw units. Region and year are included as fixed effects, while country is included as a random effect to account for repeated observations from the same country across years.
 
+Only log population is statistically significant in the mixed model, suggesting that countries with larger populations tend to have higher audited plastic totals, while population density, GDP, year, and region do not show significant associations after accounting for country level variation.
+:::
 
 # Nigeria
 
@@ -457,7 +473,8 @@ selectInput(
   "Select metric to display:",
   choices = c(
     "Plastic waste (kg/person/year)" = "plastic",
-    "GDP (billion US$)"              = "gdp"
+    "GDP (billion US$)"              = "gdp",
+    "Population 2020 (millions)"     = "population"
   ),
   selected = "plastic"
 )
@@ -570,7 +587,54 @@ output$map <- renderLeaflet({
         position = "bottomright"
       ) |>
       addControl("No data = grey states", position = "bottomright")
+  } else if (input$metric == "population") {
+
+    pal <- colorBin(
+      palette  = "Purples",
+      domain   = plot_this$`Population 2020 projected`,
+      bins     = c(0, 3, 6, 7, 8, 9, 10),
+      na.color = "grey80"
+    )
+
+    leaflet(plot_this3) |>
+      addProviderTiles(providers$CartoDB.PositronNoLabels) |>
+      addPolygons(
+        fillColor   = ~pal(`Population 2020 projected`),
+        fillOpacity = 0.8,
+        color       = "black",
+        weight      = 1,
+        popup = ~ifelse(
+          is.na(`Population 2020 projected`),
+          paste0("<b>", adm1_name, "</b><br>No data available"),
+          paste0(
+            "<b>", adm1_name, "</b>",
+            "<br>Population in Millions", round(`Population 2020 projected`, 2)
+          )
+        )
+      ) |>
+      addLabelOnlyMarkers(
+        data         = centroids3,
+        label        = ~adm1_name,
+        labelOptions = labelOptions(
+          noHide    = TRUE,
+          direction = "center",
+          style     = list(
+            "font-weight" = "bold",
+            "color"       = "black",
+            "font-size"   = "9px",
+            "padding"     = "2px"
+          )
+        )
+      ) |>
+      addLegend(
+        pal      = pal,
+        values   = ~`Population 2020 projected`[!is.na(`Population 2020 projected`)],
+        title    = "Population in Millions",
+        position = "bottomright"
+      ) |>
+      addControl("No data = grey states", position = "bottomright")
   }
+  
 })
 ```
 
